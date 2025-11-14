@@ -51,4 +51,12 @@ class Dataset:
         ) for coords, values in p] for p in projections]
 
         return (patches, projections, chosen_rotations) if return_intermediates else patches
-        
+
+
+def stack_patches(patches):
+    # NOTE: patch_counts will only be a "proper" array if we're assuming an equal view count for all events!
+    # This is what I'm going with for now, but it might change!
+    patch_counts = np.array([[x for x, _, _ in event] for event in patches])
+    all_coords = np.concatenate([x for event in patches for _, x, _ in event])
+    all_patches = np.concatenate([x for event in patches for _, _, x in event])
+    return patch_counts, all_coords, all_patches

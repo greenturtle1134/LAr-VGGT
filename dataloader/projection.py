@@ -9,6 +9,7 @@ def project_2d(image, proj,
               ):
     """
     Projects a voxel image to a list of sparse 2D pixels
+    This is the "new" version used for development purposes
     :param image: the 3D voxel image, a NxD array. The first four columns are the three spatial dimensions, then value
     :param proj: the 2x3 projection matrix to be used
     :param x_min: minimum x value
@@ -32,11 +33,10 @@ def project_2d(image, proj,
         (projected[:,1] >= y_min) & (projected[:,1] <= y_max)
     ]
 
-    # Computation of integer coordinates
-    projected_coords = np.column_stack((
-        np.digitize(projected[:,0], np.linspace(x_min, x_max, x_pix+1)) - 1,
-        np.digitize(projected[:,1], np.linspace(y_min, y_max, y_pix+1)) - 1
-    ))
+    # Convert coordinates to integer pixels
+    projected_x = np.trunc(x_pix * (projected[:,0] - x_min) / (x_max - x_min)).astype(int)
+    projected_y = np.trunc(y_pix * (projected[:,1] - y_min) / (y_max - y_min)).astype(int)
+    projected_coords = np.column_stack((projected_x, projected_y))
 
     # Aggregation of points into pixels
     coords, inv = np.unique(projected_coords, axis=0, return_inverse=True)

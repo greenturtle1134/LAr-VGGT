@@ -11,9 +11,9 @@ import torch.nn.functional as F
 from torch.utils.checkpoint import checkpoint
 from typing import Optional, Tuple, Union, List, Dict, Any
 
-from project.layers import PatchEmbed
-from project.layers.block import Block
-from project.layers.rope import RotaryPositionEmbedding2D, PositionGetter
+from layers import PatchEmbed
+from layers.block import Block
+from layers.rope import RotaryPositionEmbedding2D, PositionGetter
 # from vggt.layers.vision_transformer import vit_small, vit_base, vit_large, vit_giant2
 
 # logger = logging.getLogger(__name__)
