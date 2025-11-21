@@ -16,6 +16,7 @@ class Tokenizer(nn.Module):
         for n in layers_per_pool:
             for _ in range(n):
                 layers.append(nn.Conv2d(i, i*2, 3, padding=1))
+                layers.append(nn.ReLU())
                 i *= 2
             layers.append(nn.MaxPool2d(2))
         
