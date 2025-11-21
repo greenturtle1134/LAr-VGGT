@@ -6,6 +6,7 @@ from typing import Optional, Tuple, Union, List, Dict, Any
 
 from models.tokenizer import Tokenizer
 from models.transformer import Aggregator
+from heads.camera_head import CameraHead
 
 def unflatten_tokens(counts, x):
     """
@@ -33,14 +34,17 @@ def unflatten_tokens(counts, x):
 
     return res.reshape(N, S, P, C)
     
-
 class VGGT(nn.Module):
 
     def __init__(self):
         super().__init__()
+
+        embed_dim = 256  # This is actually calculated from the output dimension of the tokenizer
         
         self.tokenizer = Tokenizer()
-        self.aggregator = Aggregator(embed_dim=256)
+        self.aggregator = Aggregator(embed_dim=embed_dim)
+
+        self.camera_head = CameraHead(dim_in=2*embed_dim)
         pass
 
     def forward(self, patch_counts, all_coords, all_patches):
@@ -49,6 +53,13 @@ class VGGT(nn.Module):
         pos = unflatten_tokens(patch_counts, all_coords)
         tokens = unflatten_tokens(patch_counts, all_tokens)
 
-        x = self.aggregator.forward(tokens, pos)
+        aggregated_tokens_list, patch_start_idx = self.aggregator.forward(tokens, pos)
 
-        return x
+        predictions = dict()
+
+        if self.camera_head is not None:
+            pose_enc_list = self.camera_head(aggregated_tokens_list)
+            predictions["pose_enc"] = pose_enc_list[-1]  # pose encoding of the last iteration
+            predictions["pose_enc_list"] = pose_enc_list
+
+        return predictions, aggregated_tokens_list, patch_start_idx
