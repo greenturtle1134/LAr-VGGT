@@ -30,7 +30,7 @@ class Dataset:
         for x in self.images:
             x[:,0:3] -= L/2
 
-    def choose_events(self, N, S, return_intermediates = False):
+    def choose_events(self, N, S, return_intermediates = True):
         chosen_events = random.choices(self.images, k=N)
         chosen_rotations = [[Rotation.random() for _ in range(S)] for _ in range(N)]
 
