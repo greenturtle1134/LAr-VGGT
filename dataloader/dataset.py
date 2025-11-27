@@ -4,7 +4,7 @@ from scipy.spatial.transform import Rotation
 from dataloader.projection import *
 
 class Dataset:
-    def __init__(self, path, pixel_res = (256, 256), patch_size = (16, 16), x_range = None, y_range = None, L = 768):
+    def __init__(self, images, image_clusters, pixel_res = (256, 256), patch_size = (16, 16), x_range = None, y_range = None, L = 768):
         # Infer ranges as the minimum size to contain the whole cube
         Ls = L*np.sqrt(3)/2
         if x_range is None:
@@ -18,17 +18,12 @@ class Dataset:
         self.x_pix, self.y_pix = pixel_res
         self.x_patch, self.y_patch = patch_size
         self.L = L
-        
-        # Load the data
-        f = h5.File(path, mode = 'r')
-        
-        # Reshape image and clusters lists
-        self.images = [x.reshape(-1, 8) for x in f["point"]]
-        self.image_clusters = [x.reshape(-1, 5) for x in f["cluster"]]
-        
-        # Translate images to center at origin
-        for x in self.images:
-            x[:,0:3] -= L/2
+        self.images = images
+        self.image_clusters = image_clusters
+
+
+    def __len__(self):
+        return len(self.images)
 
     def choose_events(self, N, S, return_intermediates = True):
         chosen_events = random.choices(self.images, k=N)
@@ -52,6 +47,20 @@ class Dataset:
 
         return (patches, projections, chosen_rotations) if return_intermediates else patches
 
+def dataset_from_file(path, **kwargs):
+    # Load the data
+    f = h5.File(path, mode = 'r')
+    
+    # Reshape image and clusters lists
+    images = [x.reshape(-1, 8) for x in f["point"]]
+    image_clusters = [x.reshape(-1, 5) for x in f["cluster"]]
+    
+    # Translate images to center at origin
+    for x in images:
+        x[:,0:3] -= L/2
+
+    # Construct the dataset
+    return Dataset(images, image_clusters, **kwargs)
 
 def stack_patches(patches):
     # NOTE: patch_counts will only be a "proper" array if we're assuming an equal view count for all events!

@@ -9,7 +9,6 @@ def project_2d(image, proj,
               ):
     """
     Projects a voxel image to a list of sparse 2D pixels
-    This is the "new" version used for development purposes
     :param image: the 3D voxel image, a NxD array. The first four columns are the three spatial dimensions, then value
     :param proj: the 2x3 projection matrix to be used
     :param x_min: minimum x value
@@ -41,7 +40,6 @@ def project_2d(image, proj,
     # Aggregation of points into pixels
     coords, inv = np.unique(projected_coords, axis=0, return_inverse=True)
     values = np.bincount(inv, weights=projected[:,2])
-    # return np.column_stack((coords, values))
     return coords, values
 
 
@@ -78,7 +76,7 @@ def patchify(coords, values, x_pix, y_pix, x_patch, y_patch):
         np.digitize(coords[:,1], np.arange(0, y_pix, y_patch)) - 1
     ))
     
-    #Identify nonzero patches and patch assignments
+    # Identify nonzero patches and patch assignments
     patch_coords, inv = np.unique(patch_coords, axis=0, return_inverse=True)
     
     # Get the number of patches
@@ -93,3 +91,41 @@ def patchify(coords, values, x_pix, y_pix, x_patch, y_patch):
     patches[inv, offset_x, offset_y] = values
     
     return P, patch_coords, patches
+
+
+# def patchify_set(coords, values, ids, x_pix, y_pix, x_patch, y_patch):
+#     """
+#     Divides a set of 2D sparse pixel images into sparse patches.
+#     :param coords: Nx2 array of nonzero pixels, as returned by project_2d
+#     :param values: N-length array of pixel values, as returned by project_2d
+#     :param ids: N-length array of identifications of images
+#     :x_pix: the number of pixels in x
+#     :y_pix: the number of pixels in y
+#     :x_patch: the size of the patch in x
+#     :y_patch: the size of the patch in y
+#     :returns: tuple (P, patch_coords, patches) where P is the number of patches, patch_coords is a Px3 containing [x_coord, y_coord, id] of every non-zero patch, and patches is a PxD1xD2 of patch images
+#     """
+#     # Locate the patch coordinates of each nonzero pixel
+#     patch_coords = np.column_stack((
+#         np.digitize(coords[:,0], np.arange(0, x_pix, x_patch)) - 1,
+#         np.digitize(coords[:,1], np.arange(0, y_pix, y_patch)) - 1,
+#         ids
+#     ))
+    
+#     #Identify nonzero patches and patch assignments
+#     patch_coords, inv = np.unique(patch_coords, axis=0, return_inverse=True)  # patch_coords is now an array of [x, y, id]
+    
+#     # Get the number of patches
+#     P, _ = patch_coords.shape
+#     N = np.max(patch_coords[:3])
+    
+#     # Compute the x and y coordinates within each point
+#     offset_coords = coords - patch_coords[inv][:2] * np.array([x_patch, y_patch]) # Coords to the corner of each patch
+#     offset_x, offset_y = offset_coords[:,0], offset_coords[:,1]
+#     image_id = patch_coords[inv]
+    
+#     # Fill in the final array
+#     patches = np.zeros((P, x_patch, y_patch, N))
+#     patches[inv, offset_x, offset_y, image_id] = values
+    
+#     return P, patch_coords, patches
