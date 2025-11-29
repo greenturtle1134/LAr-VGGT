@@ -8,7 +8,7 @@ def project_2d(image, proj,
                y_min = -Ls, y_max = Ls, y_pix = L
               ):
     """
-    Projects a voxel image to a list of sparse 2D pixels
+    Projects a voxel image to a list of sparse 2D pixels, recently modified
     :param image: the 3D voxel image, a NxD array. The first four columns are the three spatial dimensions, then value
     :param proj: the 2x3 projection matrix to be used
     :param x_min: minimum x value
@@ -19,27 +19,29 @@ def project_2d(image, proj,
     :param y_pix: number of pixels on y axis
     :returns: tuple of (coords, values) where coords is a N'x2 array of integers representing coordinates of nonzero pixels, and values is a N-length array of total values
     """
-    # FOR NOW ignore lower rows of projection matrix; will definitely need them later
-    if proj.shape[0] > 2:
-        proj = proj[:2,:]
+    # # FOR NOW ignore lower rows of projection matrix; will definitely need them later
+    # if proj.shape[0] > 2:
+    #     proj = proj[:2,:]
     
-    # Projection of points onto 2D plane
-    projected = np.hstack([image[:, :3] @ proj.T, image[:, 3:]])
+    # Rotation of points as per matrix
+    rotated = image[:, :3] @ proj.T
 
     # Prune points not within range
-    projected = projected[
-        (projected[:,0] >= x_min) & (projected[:,0] <= x_max) &
-        (projected[:,1] >= y_min) & (projected[:,1] <= y_max)
+    rotated = rotated[
+        (rotated[:,0] >= x_min) & (rotated[:,0] <= x_max) &
+        (rotated[:,1] >= y_min) & (rotated[:,1] <= y_max)
     ]
 
-    # Convert coordinates to integer pixels
-    projected_x = np.trunc(x_pix * (projected[:,0] - x_min) / (x_max - x_min)).astype(int)
-    projected_y = np.trunc(y_pix * (projected[:,1] - y_min) / (y_max - y_min)).astype(int)
-    projected_coords = np.column_stack((projected_x, projected_y))
+    # Extract x and y coordinates, round to nearest pixel
+    projected_x = np.trunc(x_pix * (rotated[:,0] - x_min) / (x_max - x_min)).astype(int)
+    projected_y = np.trunc(y_pix * (rotated[:,1] - y_min) / (y_max - y_min)).astype(int)
+    # projected_x = np.floor_divide(x_pix * (rotated[:,0] - x_min), (x_max - x_min))
+    # projected_y = np.floor_divide(y_pix * (rotated[:,1] - y_min), (y_max - y_min))
+    projected_coords = np.column_stack((projected_x, projected_y)).astype(int)
 
     # Aggregation of points into pixels
     coords, inv = np.unique(projected_coords, axis=0, return_inverse=True)
-    values = np.bincount(inv, weights=projected[:,2])
+    values = np.bincount(inv, weights=image[:,3])
     return coords, values
 
 
