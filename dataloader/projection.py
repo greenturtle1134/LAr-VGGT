@@ -19,9 +19,6 @@ def project_2d(image, proj,
     :param y_pix: number of pixels on y axis
     :returns: tuple of (coords, values) where coords is a N'x2 array of integers representing coordinates of nonzero pixels, and values is a N-length array of total values
     """
-    # # FOR NOW ignore lower rows of projection matrix; will definitely need them later
-    # if proj.shape[0] > 2:
-    #     proj = proj[:2,:]
     
     # Rotation of points as per matrix
     rotated = image[:, :3] @ proj.T
@@ -73,10 +70,7 @@ def patchify(coords, values, x_pix, y_pix, x_patch, y_patch):
     :returns: tuple (P, patch_coords, patches) where P is the number of patches, patch_coords is a Px2 containing coordinates of each non-zero patch (in units of patches), and patches is a PxD1xD2 of patch images
     """
     # Locate the patch coordinates of each nonzero pixel
-    patch_coords = np.column_stack((
-        np.digitize(coords[:,0], np.arange(0, x_pix, x_patch)) - 1,
-        np.digitize(coords[:,1], np.arange(0, y_pix, y_patch)) - 1
-    ))
+    patch_coords, offset_coords = np.divmod(coords, np.array([x_patch, y_patch]))
     
     # Identify nonzero patches and patch assignments
     patch_coords, inv = np.unique(patch_coords, axis=0, return_inverse=True)
@@ -84,11 +78,8 @@ def patchify(coords, values, x_pix, y_pix, x_patch, y_patch):
     # Get the number of patches
     P, _ = patch_coords.shape
     
-    # Compute the x and y coordinates within each point
-    offset_coords = coords - patch_coords[inv] * np.array([x_patch, y_patch]) # Coords to the corner of each patch
-    offset_x, offset_y = offset_coords[:,0], offset_coords[:,1]
-    
     # Fill in the final array
+    offset_x, offset_y = offset_coords[:,0], offset_coords[:,1]
     patches = np.zeros((P, x_patch, y_patch))
     patches[inv, offset_x, offset_y] = values
     
