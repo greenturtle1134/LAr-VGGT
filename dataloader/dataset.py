@@ -1,16 +1,44 @@
-import h5py as h5
+import math
+import numpy as np
 import random
+
 from scipy.spatial.transform import Rotation
-from dataloader.projection import *
+import h5py as h5
+
+from dataloader.preprocessing import *
+
+# This function will have to change as the supervision changes!
+def project_and_patchify(image, proj, x_min, x_max, x_pix, x_patch, y_min, y_max, y_pix, y_patch, threshold):
+    # Compute projection
+    coords, inv, depth, mask = project_2d(image, proj,
+                                          x_min=x_min, x_max=x_max, x_pix=x_pix,
+                                          y_min=y_min, y_max=y_max, y_pix=y_pix
+                                         )
+    point_values = image[:,3][mask]
+
+    # Sum the values and take the mean distance
+    values = np.bincount(inv, weights=point_values)
+    depth_sums = np.bincount(inv, weights=depth*point_values)
+    values = np.bincount(inv, weights=point_values)
+    mean_depth = depth_sums / values
+    
+    # Split into patches
+    P, patch_coords, offset_coords, patch_inv = split_patches(coords, x_patch, y_patch)
+    patches = construct_patches(P, offset_coords, patch_inv, values, x_patch, y_patch)
+    depth_patches = construct_patches(P, offset_coords, patch_inv, mean_depth, x_patch, y_patch)
+
+    # Cut based on thresholding
+    mask = patches.sum(axis=(1, 2)) > threshold
+    patch_coords, patches, depth_patches = patch_coords[mask], patches[mask], depth_patches[mask]
+
+    return patch_coords, patches, depth_patches
 
 class Dataset:
-    def __init__(self, images, image_clusters, pixel_res = (256, 256), patch_size = (16, 16), x_range = None, y_range = None, L = 768):
-        # Infer ranges as the minimum size to contain the whole cube
-        Ls = L*np.sqrt(3)/2
+    def __init__(self, images, image_clusters, pixel_res = (256, 256), patch_size = (16, 16), x_range = None, y_range = None, L = 768, threshold=1):
         if x_range is None:
-            x_range = (-Ls, Ls)
+            x_range = (-L/2, L/2)
         if y_range is None:
-            y_range = (-Ls, Ls)
+            y_range = (-L/2, L/2)
 
         # Store parameters
         self.x_min, self.x_max = x_range
@@ -20,6 +48,7 @@ class Dataset:
         self.L = L
         self.images = images
         self.image_clusters = image_clusters
+        self.threshold = threshold
 
 
     def __len__(self):
@@ -29,23 +58,13 @@ class Dataset:
         chosen_events = random.choices(self.images, k=N)
         chosen_rotations = [[Rotation.random() for _ in range(S)] for _ in range(N)]
 
-        projections = [[project_2d(
-            event, rotation.as_matrix(),
-            x_min=self.x_min,
-            x_max=self.x_max,
-            x_pix=self.x_pix,
-            y_min=self.y_min,
-            y_max=self.y_max,
-            y_pix=self.y_pix
+        results = [[project_and_patchify(
+            event, rotation.as_matrix(), threshold=self.threshold,
+            x_min=self.x_min, x_max=self.x_max, x_pix=self.x_pix, x_patch=self.x_patch,
+            y_min=self.y_min, y_max=self.y_max, y_pix=self.y_pix, y_patch=self.y_patch
         ) for rotation in rotations] for event, rotations in zip(chosen_events, chosen_rotations)]
 
-        patches = [[patchify(
-            coords, values,
-            x_pix=self.x_pix, y_pix=self.y_pix,
-            x_patch=self.x_patch, y_patch=self.y_patch
-        ) for coords, values in p] for p in projections]
-
-        return (patches, projections, chosen_rotations) if return_intermediates else patches
+        return (results, chosen_rotations) if return_intermediates else results
 
 def dataset_from_file(path, **kwargs):
     # Load the data
@@ -61,11 +80,3 @@ def dataset_from_file(path, **kwargs):
 
     # Construct the dataset
     return Dataset(images, image_clusters, **kwargs)
-
-def stack_patches(patches):
-    # NOTE: patch_counts will only be a "proper" array if we're assuming an equal view count for all events!
-    # This is what I'm going with for now, but it might change!
-    patch_counts = np.array([[x for x, _, _ in event] for event in patches])
-    all_coords = np.concatenate([x for event in patches for _, x, _ in event])
-    all_patches = np.concatenate([x for event in patches for _, _, x in event])
-    return patch_counts, all_coords, all_patches
