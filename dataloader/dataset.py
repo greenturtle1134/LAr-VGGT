@@ -54,9 +54,21 @@ class Dataset:
     def __len__(self):
         return len(self.images)
 
-    def choose_events(self, N, S, return_intermediates = True):
-        chosen_events = random.choices(self.images, k=N)
-        chosen_rotations = [[Rotation.random() for _ in range(S)] for _ in range(N)]
+    def choose_events(self, N, S, return_intermediates = True, locked_rotations = None):
+        chosen_events = random.sample(self.images, k=N)
+        if locked_rotations == "orthogonal":
+            bases = [Rotation.random() for _ in range(N)]
+            chosen_rotations = [[b, Rotation.from_euler('x', 90, degrees=True) * b, Rotation.from_euler('y', 90, degrees=True) * b] for b in bases]
+        elif locked_rotations == "limited":
+            bases = [Rotation.from_euler('x', random.uniform(-90, 90), degrees=True) for _ in range(N)]
+            chosen_rotations = [[b, Rotation.from_euler('x', 90, degrees=True) * b, Rotation.from_euler('y', 90, degrees=True) * b] for b in bases]
+        elif locked_rotations == "fixed":
+            bases = [Rotation.from_euler('x', 0, degrees=True) for _ in range(N)]
+            chosen_rotations = [[b, Rotation.from_euler('x', 90, degrees=True) * b, Rotation.from_euler('y', 90, degrees=True) * b] for b in bases]
+        else:
+            if locked_rotations is not None and locked_rotations != "none":
+                print("Warning: unknown rotation {locked_rotations} found; using fully random")
+            chosen_rotations = [[Rotation.random() for _ in range(S)] for _ in range(N)]
 
         results = [[project_and_patchify(
             event, rotation.as_matrix(), threshold=self.threshold,
@@ -66,13 +78,17 @@ class Dataset:
 
         return (results, chosen_rotations) if return_intermediates else results
 
-def dataset_from_file(path, **kwargs):
+def dataset_from_file(path, remove_noise_cluster=False, **kwargs):
     # Load the data
     f = h5.File(path, mode = 'r')
     
     # Reshape image and clusters lists
     images = [x.reshape(-1, 8) for x in f["point"]]
     image_clusters = [x.reshape(-1, 5) for x in f["cluster"]]
+
+    # Cut out the first cluster if desired
+    if remove_noise_cluster:
+        images = [image[clusters[0,0]:,:] for image, clusters in zip(images, image_clusters)]
     
     # Translate images to center at origin
     for x in images:

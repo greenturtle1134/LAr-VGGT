@@ -20,7 +20,7 @@ class Tokenizer(nn.Module):
                 i *= 2
             layers.append(nn.MaxPool2d(2))
         
-        self.layers = nn.ModuleList(layers)
+        self.layers = nn.Sequential(*layers)
 
     def forward(self, x):
         if len(x.shape) == 3:
@@ -32,3 +32,19 @@ class Tokenizer(nn.Module):
         for layer in self.layers:
             x = layer.forward(x)
         return x.view(N, -1)
+
+
+class IdentityTokenizer(nn.Module):
+
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        if len(x.shape) == 3:
+            N, H, W = x.shape
+            x = x.view(N, 1, H, W)
+        else:
+            N, _, H, W = x.shape
+
+        return x.view(N, -1)
+        

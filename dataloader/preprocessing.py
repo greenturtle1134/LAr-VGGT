@@ -92,10 +92,10 @@ def construct_patches(P, offset_coords, patch_inv, values, x_patch, y_patch):
 def stack_patches(patches):
     """
     Stacks a bunch of patches together for batch-processing
-    :param patches: nested list of shape NxS, each element is a tuple consisting of a patch count P, followed by some number of patch arrays to concatenate of shape PxHxW
+    :param patches: nested list of shape NxS, each element is a tuple of patch arrays to concatenate of shape Px??? each. Typically this is coordinates (Px2), values (PxHxW), and depths (PxHxW)
     :returns: tuple (patch_counts, ...) where patch_counts is a NxS of counts for each view, every other element is a concatenated array
     """
-    patch_counts = np.array([[x for x, _, _ in event] for event in patches])
-    all_coords = np.concatenate([x for event in patches for _, x, _ in event])
-    all_patches = np.concatenate([x for event in patches for _, _, x in event])
-    return patch_counts, all_coords, all_patches
+    D = len(patches[0][0])
+    patch_counts = np.array([[x[0].shape[0] for x in event] for event in patches])
+    all_stacks = [np.concatenate([x[i] for event in patches for x in event]) for i in range(D)]
+    return patch_counts, *all_stacks
