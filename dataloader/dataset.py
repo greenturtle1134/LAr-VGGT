@@ -34,7 +34,7 @@ def project_and_patchify(image, proj, x_min, x_max, x_pix, x_patch, y_min, y_max
     return patch_coords, patches, depth_patches
 
 class Dataset:
-    def __init__(self, images, image_clusters, pixel_res = (256, 256), patch_size = (16, 16), x_range = None, y_range = None, L = 768, threshold=1):
+    def __init__(self, images, image_clusters, pixel_res = (256, 256), patch_size = (16, 16), x_range = None, y_range = None, L = 768, threshold=0):
         if x_range is None:
             x_range = (-L/2, L/2)
         if y_range is None:
@@ -54,8 +54,31 @@ class Dataset:
     def __len__(self):
         return len(self.images)
 
+    def __getitem__(self, key):
+        # If the key is a slice, return a new Dataset
+        if isinstance(key, slice):
+            # slice the lists
+            new_images = self.images[key]
+            new_clusters = self.image_clusters[key]
+
+            # create a new instance
+            new_obj = self.__class__(
+                new_images, new_clusters,
+                x_range = (self.x_min, self.x_max),
+                y_range = (self.y_min, self.y_max),
+                pixel_res = (self.x_pix, self.y_pix),
+                patch_size = (self.x_patch, self.y_patch),
+                L = self.L,
+                threshold = self.threshold
+            )
+            
+            return new_obj
+
+        # If the key is an int, return the corresponding element
+        return (self.images[key], self.image_clusters[key])
+
     def choose_events(self, N, S, return_intermediates = True, locked_rotations = None):
-        chosen_events = random.sample(self.images, k=N)
+        chosen_events = random.sample(self.images, k=N) # if N < len(self.images) else self.images
         if locked_rotations == "orthogonal":
             bases = [Rotation.random() for _ in range(N)]
             chosen_rotations = [[b, Rotation.from_euler('x', 90, degrees=True) * b, Rotation.from_euler('y', 90, degrees=True) * b] for b in bases]
