@@ -69,7 +69,7 @@ class DepthHeadOnlyFC(nn.Module):
         
         self.fc = nn.Sequential(
             nn.Linear(dim_in, patch_size*patch_size),
-            nn.Tanh(),
+            nn.Sigmoid(),
             nn.Linear(patch_size*patch_size, patch_size*patch_size)
         )
 
