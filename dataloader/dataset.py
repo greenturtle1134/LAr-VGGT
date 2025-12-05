@@ -33,6 +33,22 @@ def project_and_patchify(image, proj, x_min, x_max, x_pix, x_patch, y_min, y_max
 
     return patch_coords, patches, depth_patches
 
+def choose_angles(N, S, locked_rotations=None):
+    if locked_rotations == "orthogonal":
+        bases = [Rotation.random() for _ in range(N)]
+        chosen_rotations = [[b, Rotation.from_euler('x', 90, degrees=True) * b, Rotation.from_euler('y', 90, degrees=True) * b] for b in bases]
+    elif locked_rotations == "limited":
+        bases = [Rotation.from_euler('x', random.uniform(-90, 90), degrees=True) for _ in range(N)]
+        chosen_rotations = [[b, Rotation.from_euler('x', 90, degrees=True) * b, Rotation.from_euler('y', 90, degrees=True) * b] for b in bases]
+    elif locked_rotations == "fixed":
+        bases = [Rotation.from_euler('x', 0, degrees=True) for _ in range(N)]
+        chosen_rotations = [[b, Rotation.from_euler('x', 90, degrees=True) * b, Rotation.from_euler('y', 90, degrees=True) * b] for b in bases]
+    else:
+        if locked_rotations is not None and locked_rotations != "none":
+            print("Warning: unknown rotation {locked_rotations} found; using fully random")
+        chosen_rotations = [[Rotation.random() for _ in range(S)] for _ in range(N)]
+    return chosen_rotations
+
 class Dataset:
     def __init__(self, images, image_clusters, pixel_res = (256, 256), patch_size = (16, 16), x_range = None, y_range = None, L = 768, threshold=1):
         if x_range is None:
@@ -56,19 +72,7 @@ class Dataset:
 
     def choose_events(self, N, S, return_intermediates = True, locked_rotations = None):
         chosen_events = random.sample(self.images, k=N)
-        if locked_rotations == "orthogonal":
-            bases = [Rotation.random() for _ in range(N)]
-            chosen_rotations = [[b, Rotation.from_euler('x', 90, degrees=True) * b, Rotation.from_euler('y', 90, degrees=True) * b] for b in bases]
-        elif locked_rotations == "limited":
-            bases = [Rotation.from_euler('x', random.uniform(-90, 90), degrees=True) for _ in range(N)]
-            chosen_rotations = [[b, Rotation.from_euler('x', 90, degrees=True) * b, Rotation.from_euler('y', 90, degrees=True) * b] for b in bases]
-        elif locked_rotations == "fixed":
-            bases = [Rotation.from_euler('x', 0, degrees=True) for _ in range(N)]
-            chosen_rotations = [[b, Rotation.from_euler('x', 90, degrees=True) * b, Rotation.from_euler('y', 90, degrees=True) * b] for b in bases]
-        else:
-            if locked_rotations is not None and locked_rotations != "none":
-                print("Warning: unknown rotation {locked_rotations} found; using fully random")
-            chosen_rotations = [[Rotation.random() for _ in range(S)] for _ in range(N)]
+        chosen_rotations = choose_angles(N, S, locked_rotations)
 
         results = [[project_and_patchify(
             event, rotation.as_matrix(), threshold=self.threshold,
