@@ -50,6 +50,9 @@ class Dataset:
         self.image_clusters = image_clusters
         self.threshold = threshold
 
+        # This is really a parameter only used for testing
+        self.angle_limit = 0
+
 
     def __len__(self):
         return len(self.images)
@@ -84,6 +87,15 @@ class Dataset:
             chosen_rotations = [[b, Rotation.from_euler('x', 90, degrees=True) * b, Rotation.from_euler('y', 90, degrees=True) * b] for b in bases]
         elif locked_rotations == "limited":
             bases = [Rotation.from_euler('x', random.uniform(-90, 90), degrees=True) for _ in range(N)]
+            chosen_rotations = [[b, Rotation.from_euler('x', 90, degrees=True) * b, Rotation.from_euler('y', 90, degrees=True) * b] for b in bases]
+        elif locked_rotations == "limited_round":
+            bases = [Rotation.from_euler('x', random.uniform(-180, 180), degrees=True) for _ in range(N)]
+            chosen_rotations = [[b, Rotation.from_euler('x', 90, degrees=True) * b, Rotation.from_euler('y', 90, degrees=True) * b] for b in bases]
+        elif locked_rotations == "xy":
+            bases = [Rotation.from_euler('XY', [random.uniform(-180, 180), random.uniform(-180, 180)], degrees=True) for _ in range(N)]
+            chosen_rotations = [[b, Rotation.from_euler('x', 90, degrees=True) * b, Rotation.from_euler('y', 90, degrees=True) * b] for b in bases]
+        elif locked_rotations == "xz":
+            bases = [Rotation.from_euler('XZ', [random.uniform(-180, 180), random.uniform(-180, 180)], degrees=True) for _ in range(N)]
             chosen_rotations = [[b, Rotation.from_euler('x', 90, degrees=True) * b, Rotation.from_euler('y', 90, degrees=True) * b] for b in bases]
         elif locked_rotations == "fixed":
             bases = [Rotation.from_euler('x', 0, degrees=True) for _ in range(N)]

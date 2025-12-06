@@ -52,6 +52,7 @@ class Aggregator(nn.Module):
         depth=24,
         num_heads=16,
         mlp_ratio=4.0,
+        # use_
         num_register_tokens=4,
         block_fn=Block,
         qkv_bias=True,
